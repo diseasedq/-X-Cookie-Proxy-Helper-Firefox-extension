@@ -13,6 +13,8 @@
         "webRequestBlocking",
         "downloads",
         "browsingData",
+        "clipboardRead",
+        "clipboardWrite",
         "<all_urls>"
     ],
     "browser_specific_settings": {
@@ -29,5 +31,17 @@
     "browser_action": {
         "default_popup": "popup.html",
         "default_title": "X Helper"
-    }
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "*://x.com/*",
+                "*://twitter.com/*"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "run_at": "document_idle"
+        }
+    ]
 }

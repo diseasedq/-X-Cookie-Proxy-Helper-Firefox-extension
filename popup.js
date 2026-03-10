@@ -491,6 +491,15 @@ function setStatus(id, text, cls) {
     el.className = "status " + (cls || "");
 }
 
+// Smart paste toggle
+const chk = document.getElementById("chkSmartPaste");
+browser.storage.local.get(["clipChainEnabled"], (data) => {
+    chk.checked = !!data.clipChainEnabled;
+});
+chk.addEventListener("change", () => {
+    browser.storage.local.set({ clipChainEnabled: chk.checked });
+});
+
 // Open as separate window
 let extensionWindowId = null;
 document.getElementById("btnPin").addEventListener("click", () => {

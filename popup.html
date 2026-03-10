@@ -465,9 +465,13 @@ host:port:user:pass"></textarea>
     <!-- NEXT = reset + next acc + next proxy + new tab -->
     <h2>⚡ Next Account</h2>
     <div class="section">
-        <button class="btn-green" id="btnNext" style="font-size:14px;padding:12px">⚡ NEXT — reset + new account + new
-            proxy + new tab</button>
-        <div class="hint" style="margin-top:4px">Clears session → next account → next proxy → opens x.com login</div>
+        <button class="btn-green" id="btnNext" style="font-size:14px;padding:12px">⚡ NEXT</button>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+            <label style="margin:0;font-size:11px;color:#888;cursor:pointer" for="chkSmartPaste">
+                ⛓ Smart Paste (3× Ctrl+V = login + save + next)
+            </label>
+            <input type="checkbox" id="chkSmartPaste" style="accent-color:#17bf63">
+        </div>
         <div class="btn-row" style="margin-top:6px">
             <button class="btn-red btn-sm" id="btnReset">🔄 Reset only</button>
         </div>
