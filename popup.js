@@ -299,13 +299,15 @@ document.getElementById("btnNext").addEventListener("click", () => {
             return;
         }
 
-        // 1. Next account
+        // 1. Next account + copy username to clipboard
         if (accounts.length > 0) {
             selectedAccIdx = (selectedAccIdx + 1) % accounts.length;
             selectAccount(selectedAccIdx);
+            const acc = accounts[selectedAccIdx];
+            navigator.clipboard.writeText(acc.username);
         }
 
-        // 2. Next proxy + auto-apply to new tab
+        // 2. Next proxy
         let proxyToApply = null;
         if (proxyList.length > 0) {
             proxyIdx = (proxyIdx + 1) % proxyList.length;
@@ -315,29 +317,33 @@ document.getElementById("btnNext").addEventListener("click", () => {
             document.getElementById("proxyCounter").textContent = `${proxyIdx + 1}/${proxyList.length}`;
         }
 
-        // 3. Open fresh tab
-        browser.tabs.create({ url: "https://x.com/i/flow/login" }).then((newTab) => {
-            browser.tabs.remove(currentTabId);
-            currentTabId = newTab.id;
-            document.getElementById("tabInfo").innerHTML =
-                `Tab #${currentTabId}: <strong>x.com/i/flow/login</strong>`;
+        // 3. Wait 1.5s for proxy to be ready, then open tab
+        const accName = selectedAccIdx >= 0 ? `@${accounts[selectedAccIdx].username}` : "";
+        const proxyInfo = proxyToApply ? `proxy ${proxyIdx + 1}/${proxyList.length}` : "no proxy";
+        setStatus("resetStatus", `⏳ ${accName} + ${proxyInfo} — connecting proxy...`, "");
 
-            // 4. Apply proxy to new tab
-            if (proxyToApply) {
-                const type = document.getElementById("proxyType").value;
-                browser.runtime.sendMessage({
-                    action: "setTabProxy", tabId: currentTabId,
-                    host: proxyToApply.host, port: proxyToApply.port,
-                    username: proxyToApply.username, password: proxyToApply.password, type
-                });
-                document.getElementById("proxyDot").classList.add("on");
-            }
+        setTimeout(() => {
+            browser.tabs.create({ url: "https://x.com/i/flow/login" }).then((newTab) => {
+                browser.tabs.remove(currentTabId);
+                currentTabId = newTab.id;
+                document.getElementById("tabInfo").innerHTML =
+                    `Tab #${currentTabId}: <strong>x.com/i/flow/login</strong>`;
 
-            document.getElementById("cookieOutput")?.classList.remove("visible");
-            const accName = selectedAccIdx >= 0 ? `@${accounts[selectedAccIdx].username}` : "";
-            const proxyInfo = proxyToApply ? `proxy ${proxyIdx + 1}/${proxyList.length}` : "no proxy";
-            setStatus("resetStatus", `✓ ${accName} + ${proxyInfo} → ready!`, "ok");
-        });
+                // Apply proxy to new tab
+                if (proxyToApply) {
+                    const type = document.getElementById("proxyType").value;
+                    browser.runtime.sendMessage({
+                        action: "setTabProxy", tabId: currentTabId,
+                        host: proxyToApply.host, port: proxyToApply.port,
+                        username: proxyToApply.username, password: proxyToApply.password, type
+                    });
+                    document.getElementById("proxyDot").classList.add("on");
+                }
+
+                document.getElementById("cookieOutput")?.classList.remove("visible");
+                setStatus("resetStatus", `✓ ${accName} copied + ${proxyInfo} → ready!`, "ok");
+            });
+        }, 1500);
     });
 });
 
