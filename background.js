@@ -20,6 +20,7 @@ browser.proxy.onRequest.addListener(
                 proxyInfo.username = p.username;
                 proxyInfo.password = p.password || "";
             }
+            console.log(`[PROXY] Tab ${tabId} → ${proxyInfo.type}://${proxyInfo.host}:${proxyInfo.port} for ${requestInfo.url.substring(0, 60)}`);
             return proxyInfo;
         }
         return { type: "direct" };
@@ -34,6 +35,7 @@ browser.webRequest.onAuthRequired.addListener(
         if (tabId > 0 && tabProxies[tabId] && details.isProxy) {
             const p = tabProxies[tabId];
             if (p.username) {
+                console.log(`[PROXY AUTH] Tab ${tabId} → sending credentials for ${p.username}`);
                 return { authCredentials: { username: p.username, password: p.password || "" } };
             }
         }
