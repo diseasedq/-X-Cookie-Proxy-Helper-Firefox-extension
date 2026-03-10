@@ -25,7 +25,7 @@ async function init() {
         });
     }
 
-    browser.storage.local.get(["savedAccounts", "lastProxy", "saveCounter", "selectedAccIdx"], (data) => {
+    browser.storage.local.get(["savedAccounts", "lastProxy", "saveCounter", "selectedAccIdx", "savedProxies", "proxyIdx"], (data) => {
         if (data.savedAccounts && data.savedAccounts.length > 0) {
             accounts = data.savedAccounts;
             if (data.selectedAccIdx >= 0 && data.selectedAccIdx < accounts.length) {
@@ -35,6 +35,14 @@ async function init() {
         }
         if (data.lastProxy) fillProxyFields(data.lastProxy);
         if (data.saveCounter) saveCounter = data.saveCounter;
+        if (data.savedProxies && data.savedProxies.length > 0) {
+            proxyList = data.savedProxies;
+            proxyIdx = data.proxyIdx >= 0 ? data.proxyIdx : -1;
+            document.getElementById("proxyCounter").textContent = `${proxyIdx + 1}/${proxyList.length}`;
+            if (proxyIdx >= 0 && proxyIdx < proxyList.length) {
+                fillProxyFields(proxyList[proxyIdx]);
+            }
+        }
     });
 }
 
@@ -192,30 +200,61 @@ document.getElementById("btnCopyTotp").addEventListener("click", () => {
     }
 });
 
-// ==================== PROXY ====================
+// ==================== PROXY LIST ====================
+
+let proxyList = [];
+let proxyIdx = -1;
+
+document.getElementById("btnToggleProxyPaste").addEventListener("click", () => {
+    document.getElementById("proxyPasteArea").classList.toggle("visible");
+});
+
+document.getElementById("btnLoadProxies").addEventListener("click", () => {
+    const text = document.getElementById("proxyTextarea").value.trim();
+    if (!text) { setStatus("proxyStatus", "Paste proxies first!", "err"); return; }
+
+    proxyList = text.split("\n").map(l => l.trim()).filter(l => l && !l.startsWith("#")).map(line => {
+        const parts = line.split(":").map(s => s.trim());
+        return { host: parts[0], port: parts[1], username: parts[2] || "", password: parts[3] || "" };
+    }).filter(p => p.host && p.port);
+
+    proxyIdx = -1;
+    browser.storage.local.set({ savedProxies: proxyList, proxyIdx });
+    document.getElementById("proxyPasteArea").classList.remove("visible");
+    document.getElementById("proxyCounter").textContent = `0/${proxyList.length}`;
+    setStatus("proxyStatus", `Loaded ${proxyList.length} proxies`, "ok");
+});
+
+document.getElementById("btnNextProxy").addEventListener("click", () => {
+    if (proxyList.length === 0) { setStatus("proxyStatus", "Load proxies first!", "err"); return; }
+
+    proxyIdx = (proxyIdx + 1) % proxyList.length;
+    browser.storage.local.set({ proxyIdx });
+    const p = proxyList[proxyIdx];
+
+    fillProxyFields(p);
+    document.getElementById("proxyCounter").textContent = `${proxyIdx + 1}/${proxyList.length}`;
+
+    // Auto-apply to tab
+    const type = document.getElementById("proxyType").value;
+    browser.runtime.sendMessage({
+        action: "setTabProxy", tabId: currentTabId,
+        host: p.host, port: p.port, username: p.username, password: p.password, type
+    }, (resp) => {
+        if (resp && resp.success) {
+            document.getElementById("proxyDot").classList.add("on");
+            setStatus("proxyStatus", `✓ Proxy ${proxyIdx + 1}/${proxyList.length} → tab`, "ok");
+        }
+    });
+});
 
 function fillProxyFields(p) {
     document.getElementById("proxyHost").value = p.host || "";
     document.getElementById("proxyPort").value = p.port || "";
     document.getElementById("proxyUser").value = p.username || "";
     document.getElementById("proxyPass").value = p.password || "";
-    document.getElementById("proxyType").value = p.type || "http";
-    if (p.host && p.port) {
-        document.getElementById("quickProxy").value = [p.host, p.port, p.username, p.password].filter(Boolean).join(":");
-    }
+    document.getElementById("quickProxy").value = [p.host, p.port, p.username, p.password].filter(Boolean).join(":");
 }
-
-document.getElementById("quickProxy").addEventListener("input", (e) => {
-    const parts = e.target.value.trim().split(":");
-    if (parts.length >= 2) {
-        document.getElementById("proxyHost").value = parts[0];
-        document.getElementById("proxyPort").value = parts[1];
-        if (parts.length >= 4) {
-            document.getElementById("proxyUser").value = parts[2];
-            document.getElementById("proxyPass").value = parts[3];
-        }
-    }
-});
 
 document.getElementById("btnConnect").addEventListener("click", () => {
     const host = document.getElementById("proxyHost").value.trim();
@@ -228,7 +267,6 @@ document.getElementById("btnConnect").addEventListener("click", () => {
         if (resp && resp.success) {
             document.getElementById("proxyDot").classList.add("on");
             setStatus("proxyStatus", `✓ Proxy → tab #${currentTabId}`, "ok");
-            browser.storage.local.set({ lastProxy: { host, port, username, password, type } });
         }
     });
 });
@@ -237,6 +275,21 @@ document.getElementById("btnDisconnect").addEventListener("click", () => {
     browser.runtime.sendMessage({ action: "clearTabProxy", tabId: currentTabId }, () => {
         document.getElementById("proxyDot").classList.remove("on");
         setStatus("proxyStatus", "Proxy removed", "ok");
+    });
+});
+
+// ==================== SESSION RESET ====================
+
+document.getElementById("btnReset").addEventListener("click", () => {
+    setStatus("resetStatus", "Clearing...", "");
+    browser.runtime.sendMessage({ action: "resetSession", tabId: currentTabId }, (resp) => {
+        if (resp && resp.success) {
+            document.getElementById("proxyDot").classList.remove("on");
+            document.getElementById("cookieOutput")?.classList.remove("visible");
+            setStatus("resetStatus", "✓ Session cleared! Reload tab for fresh start.", "ok");
+        } else {
+            setStatus("resetStatus", `Error: ${resp?.error || "unknown"}`, "err");
+        }
     });
 });
 

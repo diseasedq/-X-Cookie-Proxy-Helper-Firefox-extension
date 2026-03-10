@@ -83,5 +83,36 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         return true;
     }
 
+    if (msg.action === "resetSession") {
+        // 1. Remove all x.com cookies
+        Promise.all([
+            browser.cookies.getAll({ domain: ".x.com" }),
+            browser.cookies.getAll({ domain: ".twitter.com" })
+        ]).then(([xCookies, twCookies]) => {
+            const all = [...xCookies, ...twCookies];
+            const removals = all.map(c =>
+                browser.cookies.remove({ url: `https://${c.domain}${c.path}`, name: c.name })
+            );
+            return Promise.all(removals);
+        }).then(() => {
+            // 2. Clear cache + localStorage
+            return browser.browsingData.remove({}, {
+                cache: true,
+                localStorage: true,
+                indexedDB: true,
+                serviceWorkers: true
+            });
+        }).then(() => {
+            // 3. Clear tab proxy
+            if (msg.tabId) {
+                delete tabProxies[msg.tabId];
+            }
+            sendResponse({ success: true });
+        }).catch(err => {
+            sendResponse({ success: false, error: err.message });
+        });
+        return true;
+    }
+
     return false;
 });

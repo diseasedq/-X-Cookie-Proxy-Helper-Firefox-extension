@@ -407,10 +407,23 @@ user2 | pass2 | 2fa2 | email2"></textarea>
     </div>
 
     <!-- PROXY SECTION -->
-    <h2>🔌 Tab Proxy <span id="proxyDot" class="dot"></span></h2>
+    <h2>🔌 Tab Proxy <span id="proxyDot" class="dot"></span> <span style="font-size:10px;color:#666;margin-left:auto"
+            id="proxyCounter"></span></h2>
     <div class="section">
-        <label>Quick paste (host:port:user:pass)</label>
-        <input type="text" id="quickProxy" placeholder="1.2.3.4:8080:username:password">
+        <div class="btn-row">
+            <button class="btn-orange" id="btnToggleProxyPaste">📋 Paste proxy list</button>
+            <button class="btn-blue" id="btnNextProxy">⏭ Next proxy</button>
+        </div>
+        <div class="paste-area" id="proxyPasteArea">
+            <textarea id="proxyTextarea" rows="3" placeholder="One per line:
+2.59.214.252:64919:user:pass
+1.2.3.4:8080:user:pass"></textarea>
+            <button class="btn-blue" id="btnLoadProxies">Load</button>
+        </div>
+        <div class="hint" style="margin-top:4px">Format: host:port:user:pass (one per line)</div>
+
+        <label style="margin-top:6px">Current proxy</label>
+        <input type="text" id="quickProxy" placeholder="host:port:user:pass" readonly style="color:#1d9bf0">
         <div class="row">
             <div>
                 <label>Type</label>
@@ -437,6 +450,16 @@ user2 | pass2 | 2fa2 | email2"></textarea>
             <button class="btn-red" id="btnDisconnect">✕ Remove</button>
         </div>
         <div class="status" id="proxyStatus"></div>
+    </div>
+
+    <!-- SESSION RESET -->
+    <h2>🔄 Session</h2>
+    <div class="section">
+        <button class="btn-red" id="btnReset" style="font-size:13px">🔄 Reset session (clear cookies + cache +
+            proxy)</button>
+        <div class="hint" style="margin-top:4px">Clears all X.com cookies, cache, localStorage. New fingerprint on
+            reload.</div>
+        <div class="status" id="resetStatus"></div>
     </div>
 
     <!-- COOKIES SECTION -->
