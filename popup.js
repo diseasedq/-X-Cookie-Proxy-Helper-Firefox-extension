@@ -2,9 +2,8 @@
 
 let currentTabId = null;
 let lastCookies = null;
-let accounts = [];
-let selectedAccIdx = -1;
-let saveCounter = 0;
+let accounts = [], selectedAccIdx = -1, saveCounter = 0;
+let doneAccounts = new Set(); // indices of accounts with cookies saved
 
 // ==================== INIT ====================
 
@@ -25,7 +24,7 @@ async function init() {
         });
     }
 
-    browser.storage.local.get(["savedAccounts", "lastProxy", "saveCounter", "selectedAccIdx", "savedProxies", "proxyIdx", "batchLines"], (data) => {
+    browser.storage.local.get(["savedAccounts", "lastProxy", "saveCounter", "selectedAccIdx", "savedProxies", "proxyIdx", "batchLines", "doneAccounts"], (data) => {
         if (data.savedAccounts && data.savedAccounts.length > 0) {
             accounts = data.savedAccounts;
             if (data.selectedAccIdx >= 0 && data.selectedAccIdx < accounts.length) {
@@ -47,6 +46,9 @@ async function init() {
             batchLines = data.batchLines;
             document.getElementById("batchCounter").textContent = `saved: ${batchLines.length}`;
             document.getElementById("btnDownloadBatch").style.display = "block";
+        }
+        if (data.doneAccounts && data.doneAccounts.length > 0) {
+            doneAccounts = new Set(data.doneAccounts);
         }
     });
 }
@@ -120,8 +122,9 @@ function renderAccountList() {
     container.innerHTML = "";
     accounts.forEach((acc, i) => {
         const div = document.createElement("div");
-        div.className = "acc-item" + (i === selectedAccIdx ? " active" : "");
-        div.innerHTML = `<div class="acc-name">@${acc.username}</div><div class="acc-email">${acc.email || "no email"}</div>`;
+        const isDone = doneAccounts.has(i);
+        div.className = "acc-item" + (i === selectedAccIdx ? " active" : "") + (isDone ? " done" : "");
+        div.innerHTML = `<div class="acc-name">${isDone ? "✅" : ""} @${acc.username}</div><div class="acc-email">${acc.email || "no email"}</div>`;
         div.addEventListener("click", () => selectAccount(i));
         container.appendChild(div);
     });
@@ -398,6 +401,12 @@ document.getElementById("btnExtractSave").addEventListener("click", () => {
             filename: filename
         }, (resp) => {
             if (resp && resp.success) {
+                // Mark account as done
+                if (selectedAccIdx >= 0) {
+                    doneAccounts.add(selectedAccIdx);
+                    browser.storage.local.set({ doneAccounts: [...doneAccounts] });
+                    renderAccountList();
+                }
                 setStatus("cookieStatus", `✓ #${saveCounter} saved (${batchLines.length} total)`, "ok");
             } else {
                 setStatus("cookieStatus", `Save error: ${resp?.error || "unknown"}`, "err");
