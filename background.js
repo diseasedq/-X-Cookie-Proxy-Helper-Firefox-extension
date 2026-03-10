@@ -9,18 +9,38 @@ browser.proxy.onRequest.addListener(
         const tabId = requestInfo.tabId;
         if (tabId > 0 && tabProxies[tabId]) {
             const p = tabProxies[tabId];
-            return {
-                type: p.type || "http",
+            const proxyInfo = {
+                type: p.type === "socks" ? "socks" : "http",
                 host: p.host,
                 port: parseInt(p.port),
-                username: p.username || undefined,
-                password: p.password || undefined,
                 proxyDNS: true
             };
+            // SOCKS supports inline auth
+            if (p.type === "socks" && p.username) {
+                proxyInfo.username = p.username;
+                proxyInfo.password = p.password || "";
+            }
+            return proxyInfo;
         }
         return { type: "direct" };
     },
     { urls: ["<all_urls>"] }
+);
+
+// HTTP proxy authentication
+browser.webRequest.onAuthRequired.addListener(
+    (details) => {
+        const tabId = details.tabId;
+        if (tabId > 0 && tabProxies[tabId] && details.isProxy) {
+            const p = tabProxies[tabId];
+            if (p.username) {
+                return { authCredentials: { username: p.username, password: p.password || "" } };
+            }
+        }
+        return {};
+    },
+    { urls: ["<all_urls>"] },
+    ["blocking"]
 );
 
 browser.proxy.onError.addListener((error) => {
