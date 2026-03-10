@@ -22,7 +22,7 @@ browser.proxy.onRequest.addListener(
                 proxyInfo.password = activeProxy.password || "";
             }
         }
-        console.log(`[PROXY] ${proxyInfo.type}://${proxyInfo.host}:${proxyInfo.port} for ${url.substring(0, 60)}`);
+        console.log(`[PROXY] ${proxyInfo.type}://${proxyInfo.host}:${proxyInfo.port} for ${requestInfo.url.substring(0, 60)}`);
         return [proxyInfo];
     },
     { urls: ["<all_urls>"] }
@@ -35,7 +35,7 @@ browser.webRequest.onAuthRequired.addListener(
             console.log(`[PROXY AUTH] Sending credentials for ${activeProxy.username}`);
             return { authCredentials: { username: activeProxy.username, password: activeProxy.password || "" } };
         }
-        return {};
+        return;
     },
     { urls: ["<all_urls>"] },
     ["blocking"]
