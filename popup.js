@@ -15,11 +15,13 @@ async function init() {
         document.getElementById("tabInfo").innerHTML =
             `Tab #${currentTabId}: <strong>${url.substring(0, 50)}</strong>`;
 
-        browser.runtime.sendMessage({ action: "getTabProxy", tabId: currentTabId }, (resp) => {
+        browser.runtime.sendMessage({ action: "getProxy" }, (resp) => {
             if (resp && resp.proxy) {
-                fillProxyFields(resp.proxy);
+                const p = resp.proxy;
+                document.getElementById("quickProxy").value = `${p.host}:${p.port}:${p.username}:${p.password}`;
+                fillProxyFields(p);
                 document.getElementById("proxyDot").classList.add("on");
-                setStatus("proxyStatus", `Active: ${resp.proxy.host}:${resp.proxy.port}`, "ok");
+                setStatus("proxyStatus", `Active: ${p.host}:${p.port}`, "ok");
             }
         });
     }
@@ -289,12 +291,12 @@ document.getElementById("btnNextProxy").addEventListener("click", () => {
     const type = document.getElementById("proxyType").value;
     setStatus("proxyStatus", `⏳ ${type.toUpperCase()} ${p.host}:${p.port}...`, "");
     browser.runtime.sendMessage({
-        action: "setTabProxy", tabId: currentTabId,
+        action: "setProxy",
         host: p.host, port: p.port, username: p.username, password: p.password, type
     }, (resp) => {
         if (resp && resp.success) {
             document.getElementById("proxyDot").classList.add("on");
-            setStatus("proxyStatus", `✓ ${type.toUpperCase()} ${p.host}:${p.port} → tab #${currentTabId}`, "ok");
+            setStatus("proxyStatus", `✓ ${type.toUpperCase()} ${p.host}:${p.port} → all x.com`, "ok");
         }
     });
 });
@@ -324,7 +326,7 @@ document.getElementById("btnApplyProxy").addEventListener("click", () => {
 
     setStatus("proxyStatus", `⏳ Applying ${type.toUpperCase()} ${host}:${port}...`, "");
 
-    browser.runtime.sendMessage({ action: "setTabProxy", tabId: currentTabId, host, port, username, password, type }, (resp) => {
+    browser.runtime.sendMessage({ action: "setProxy", host, port, username, password, type }, (resp) => {
         if (resp && resp.success) {
             document.getElementById("proxyDot").classList.add("on");
             setStatus("proxyStatus", `✓ ${type.toUpperCase()} ${host}:${port} → tab #${currentTabId}`, "ok");
@@ -340,7 +342,7 @@ document.getElementById("btnConnect").addEventListener("click", () => {
     const password = document.getElementById("proxyPass").value.trim();
     const type = document.getElementById("proxyType").value;
     if (!host || !port) { setStatus("proxyStatus", "Fill host & port", "err"); return; }
-    browser.runtime.sendMessage({ action: "setTabProxy", tabId: currentTabId, host, port, username, password, type }, (resp) => {
+    browser.runtime.sendMessage({ action: "setProxy", host, port, username, password, type }, (resp) => {
         if (resp && resp.success) {
             document.getElementById("proxyDot").classList.add("on");
             setStatus("proxyStatus", `✓ Proxy → tab #${currentTabId}`, "ok");
@@ -349,7 +351,7 @@ document.getElementById("btnConnect").addEventListener("click", () => {
 });
 
 document.getElementById("btnDisconnect").addEventListener("click", () => {
-    browser.runtime.sendMessage({ action: "clearTabProxy", tabId: currentTabId }, () => {
+    browser.runtime.sendMessage({ action: "clearProxy" }, () => {
         document.getElementById("proxyDot").classList.remove("on");
         setStatus("proxyStatus", "Proxy removed", "ok");
     });
@@ -416,10 +418,10 @@ document.getElementById("btnNext").addEventListener("click", () => {
                     if (proxyToApply) {
                         const type = document.getElementById("proxyType").value;
                         browser.runtime.sendMessage({
-                            action: "setTabProxy", tabId: currentTabId,
+                            action: "setProxy",
                             host: proxyToApply.host, port: proxyToApply.port,
                             username: proxyToApply.username, password: proxyToApply.password,
-                            type, noReload: true
+                            type
                         });
                         document.getElementById("proxyDot").classList.add("on");
                     }
@@ -469,7 +471,7 @@ document.getElementById("btnExtractSave").addEventListener("click", () => {
         const accInfo = acc ? `${acc.username} ${acc.password}` : "log pass";
         const line = `${saveCounter}. auth_token=${authToken} ct0=${ct0} ${accInfo}`;
 
-        // Add to batch
+        // Add to batch (internal storage only)
         batchLines.push(line);
         browser.storage.local.set({ batchLines });
 
@@ -482,28 +484,13 @@ document.getElementById("btnExtractSave").addEventListener("click", () => {
         document.getElementById("btnDownloadBatch").style.display = "block";
         document.getElementById("batchCounter").textContent = `saved: ${batchLines.length}`;
 
-        // Auto-save batch file
-        const date = new Date().toISOString().split("T")[0];
-        const filename = `handshake/${date}.txt`;
-        const content = batchLines.join("\n");
-
-        browser.runtime.sendMessage({
-            action: "saveCookieFile",
-            content: content,
-            filename: filename
-        }, (resp) => {
-            if (resp && resp.success) {
-                // Mark account as done
-                if (selectedAccIdx >= 0) {
-                    doneAccounts.add(selectedAccIdx);
-                    browser.storage.local.set({ doneAccounts: [...doneAccounts] });
-                    renderAccountList();
-                }
-                setStatus("cookieStatus", `✓ #${saveCounter} saved (${batchLines.length} total)`, "ok");
-            } else {
-                setStatus("cookieStatus", `Save error: ${resp?.error || "unknown"}`, "err");
-            }
-        });
+        // Mark account as done
+        if (selectedAccIdx >= 0) {
+            doneAccounts.add(selectedAccIdx);
+            browser.storage.local.set({ doneAccounts: [...doneAccounts] });
+            renderAccountList();
+        }
+        setStatus("cookieStatus", `✓ #${saveCounter} in memory (${batchLines.length} total)`, "ok");
     });
 });
 

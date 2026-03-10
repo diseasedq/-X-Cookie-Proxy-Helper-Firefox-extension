@@ -1,32 +1,35 @@
-// Per-tab proxy management + cookie save
-// Firefox proxy.onRequest for per-tab routing
+// Global proxy for x.com/twitter.com
+// All requests to these domains go through the active proxy
 
-const tabProxies = {};
+let activeProxy = null; // { host, port, username, password, type }
 
-// Per-tab proxy routing
+// Global proxy routing for x.com
 browser.proxy.onRequest.addListener(
     (requestInfo) => {
-        const tabId = requestInfo.tabId;
-        if (tabId > 0 && tabProxies[tabId]) {
-            const p = tabProxies[tabId];
-            const isSocks = p.type === "socks";
-            const proxyInfo = {
-                type: isSocks ? "socks" : "http",
-                host: p.host,
-                port: parseInt(p.port),
-                failoverTimeout: 5
-            };
-            if (isSocks) {
-                proxyInfo.proxyDNS = true;
-                if (p.username) {
-                    proxyInfo.username = p.username;
-                    proxyInfo.password = p.password || "";
-                }
-            }
-            console.log(`[PROXY] Tab ${tabId} → ${proxyInfo.type}://${proxyInfo.host}:${proxyInfo.port} for ${requestInfo.url.substring(0, 60)}`);
-            return [proxyInfo];
+        if (!activeProxy) return { type: "direct" };
+
+        const url = requestInfo.url || "";
+        // Only proxy x.com and twitter.com
+        if (!url.includes("x.com") && !url.includes("twitter.com")) {
+            return { type: "direct" };
         }
-        return { type: "direct" };
+
+        const isSocks = activeProxy.type === "socks";
+        const proxyInfo = {
+            type: isSocks ? "socks" : "http",
+            host: activeProxy.host,
+            port: parseInt(activeProxy.port),
+            failoverTimeout: 5
+        };
+        if (isSocks) {
+            proxyInfo.proxyDNS = true;
+            if (activeProxy.username) {
+                proxyInfo.username = activeProxy.username;
+                proxyInfo.password = activeProxy.password || "";
+            }
+        }
+        console.log(`[PROXY] ${proxyInfo.type}://${proxyInfo.host}:${proxyInfo.port} for ${url.substring(0, 60)}`);
+        return [proxyInfo];
     },
     { urls: ["<all_urls>"] }
 );
@@ -34,13 +37,9 @@ browser.proxy.onRequest.addListener(
 // HTTP proxy authentication
 browser.webRequest.onAuthRequired.addListener(
     (details) => {
-        const tabId = details.tabId;
-        if (tabId > 0 && tabProxies[tabId] && details.isProxy) {
-            const p = tabProxies[tabId];
-            if (p.username) {
-                console.log(`[PROXY AUTH] Tab ${tabId} → sending credentials for ${p.username}`);
-                return { authCredentials: { username: p.username, password: p.password || "" } };
-            }
+        if (activeProxy && details.isProxy && activeProxy.username) {
+            console.log(`[PROXY AUTH] Sending credentials for ${activeProxy.username}`);
+            return { authCredentials: { username: activeProxy.username, password: activeProxy.password || "" } };
         }
         return {};
     },
@@ -52,30 +51,26 @@ browser.proxy.onError.addListener((error) => {
     console.error("Proxy error:", error.message);
 });
 
-browser.tabs.onRemoved.addListener((tabId) => {
-    delete tabProxies[tabId];
-});
-
 // Message handler
 browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
-    if (msg.action === "setTabProxy") {
-        const { tabId, host, port, username, password, type, noReload } = msg;
-        tabProxies[tabId] = { host, port, username, password, type: type || "http" };
-        if (!noReload) browser.tabs.reload(tabId);
-        sendResponse({ success: true, tabId });
-        return;
-    }
-
-    if (msg.action === "clearTabProxy") {
-        delete tabProxies[msg.tabId];
-        browser.tabs.reload(msg.tabId);
+    if (msg.action === "setProxy") {
+        const { host, port, username, password, type } = msg;
+        activeProxy = { host, port, username, password, type: type || "http" };
+        console.log(`[PROXY SET] ${type}://${host}:${port}`);
         sendResponse({ success: true });
         return;
     }
 
-    if (msg.action === "getTabProxy") {
-        sendResponse({ proxy: tabProxies[msg.tabId] || null });
+    if (msg.action === "clearProxy") {
+        activeProxy = null;
+        console.log("[PROXY CLEARED]");
+        sendResponse({ success: true });
+        return;
+    }
+
+    if (msg.action === "getProxy") {
+        sendResponse({ proxy: activeProxy });
         return;
     }
 
@@ -128,10 +123,8 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 serviceWorkers: true
             });
         }).then(() => {
-            // 3. Clear tab proxy
-            if (msg.tabId) {
-                delete tabProxies[msg.tabId];
-            }
+            // 3. Clear proxy
+            activeProxy = null;
             sendResponse({ success: true });
         }).catch(err => {
             sendResponse({ success: false, error: err.message });
@@ -217,10 +210,10 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                     browser.tabs.create(opts).then(newTab => {
                         if (mainWin) browser.windows.update(mainWin.id, { focused: true });
 
-                        // Apply proxy
+                        // Apply proxy globally
                         const proxy = proxies[pIdx];
                         if (proxy) {
-                            tabProxies[newTab.id] = {
+                            activeProxy = {
                                 host: proxy.host, port: proxy.port,
                                 username: proxy.username, password: proxy.password,
                                 type: type
