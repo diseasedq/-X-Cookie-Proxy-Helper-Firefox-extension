@@ -30,7 +30,12 @@
     },
     "browser_action": {
         "default_popup": "popup.html",
-        "default_title": "X Helper"
+        "default_title": "X Helper",
+        "default_icon": "icon.png"
+    },
+    "icons": {
+        "48": "icon.png",
+        "128": "icon.png"
     },
     "content_scripts": [
         {
