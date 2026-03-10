@@ -97,7 +97,7 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             url: url,
             filename: filename, // e.g. "handshake/2026-03-10_1.txt"
             saveAs: false,
-            conflictAction: "uniquify"
+            conflictAction: "overwrite"
         }).then((downloadId) => {
             sendResponse({ success: true, downloadId });
             // Clean up blob URL after download
@@ -162,7 +162,7 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 const url = URL.createObjectURL(blob);
 
                 return browser.downloads.download({
-                    url, filename: `handshake/${date}.txt`, saveAs: false, conflictAction: "uniquify"
+                    url, filename: `handshake/${date}.txt`, saveAs: false, conflictAction: "overwrite"
                 }).then(() => {
                     // Mark account as done
                     const done = data.doneAccounts || [];
