@@ -156,8 +156,6 @@ function selectAccount(idx) {
             if (code) {
                 document.getElementById("totpCode").textContent = code;
                 document.getElementById("totpResult").style.display = "block";
-                navigator.clipboard.writeText(code);
-                setStatus("accStatus", "✓ 2FA code copied!", "ok");
                 // Start timer
                 if (totpInterval) clearInterval(totpInterval);
                 totpInterval = setInterval(async () => {
@@ -482,13 +480,11 @@ document.getElementById("btnPin").addEventListener("click", () => {
     window.close();
 });
 
-// If opened as a tab, add class for wider layout
-if (window.location.href.startsWith("moz-extension://")) {
-    const params = new URLSearchParams(window.location.search);
-    if (!window.opener && document.referrer === "") {
-        document.body.classList.add("in-tab");
-        document.getElementById("btnPin").style.display = "none";
-    }
+// Detect if opened as a full tab (not popup)
+const isInTab = window.innerWidth > 400;
+if (isInTab) {
+    document.body.classList.add("in-tab");
+    document.getElementById("btnPin").style.display = "none";
 }
 
 init();
