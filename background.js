@@ -14,15 +14,17 @@ browser.proxy.onRequest.addListener(
                 type: isSocks ? "socks" : "http",
                 host: p.host,
                 port: parseInt(p.port),
+                failoverTimeout: 5
             };
-            if (isSocks) proxyInfo.proxyDNS = true;
-            // SOCKS supports inline auth
-            if (p.type === "socks" && p.username) {
-                proxyInfo.username = p.username;
-                proxyInfo.password = p.password || "";
+            if (isSocks) {
+                proxyInfo.proxyDNS = true;
+                if (p.username) {
+                    proxyInfo.username = p.username;
+                    proxyInfo.password = p.password || "";
+                }
             }
             console.log(`[PROXY] Tab ${tabId} → ${proxyInfo.type}://${proxyInfo.host}:${proxyInfo.port} for ${requestInfo.url.substring(0, 60)}`);
-            return proxyInfo;
+            return [proxyInfo];
         }
         return { type: "direct" };
     },
