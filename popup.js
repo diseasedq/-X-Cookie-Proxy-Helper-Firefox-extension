@@ -298,16 +298,18 @@ document.getElementById("btnApplyProxy").addEventListener("click", () => {
     const [host, port, username, password] = [parts[0], parts[1], parts[2] || "", parts[3] || ""];
     const type = document.getElementById("proxyType").value;
 
-    // Also fill detail fields
+    // Fill detail fields
     document.getElementById("proxyHost").value = host;
     document.getElementById("proxyPort").value = port;
     document.getElementById("proxyUser").value = username;
     document.getElementById("proxyPass").value = password;
 
+    setStatus("proxyStatus", `⏳ Applying ${type.toUpperCase()} ${host}:${port}...`, "");
+
     browser.runtime.sendMessage({ action: "setTabProxy", tabId: currentTabId, host, port, username, password, type }, (resp) => {
         if (resp && resp.success) {
             document.getElementById("proxyDot").classList.add("on");
-            setStatus("proxyStatus", `✓ Proxy ${host}:${port} → tab #${currentTabId}`, "ok");
+            setStatus("proxyStatus", `✓ ${type.toUpperCase()} ${host}:${port} → tab #${currentTabId}`, "ok");
             browser.storage.local.set({ lastProxy: raw });
         }
     });

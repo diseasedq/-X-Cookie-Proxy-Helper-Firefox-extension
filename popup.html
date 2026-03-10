@@ -421,7 +421,13 @@ user2 | pass2 | 2fa2 | email2"></textarea>
             style="font-size:10px;color:#666;margin-left:auto" id="proxyCounter"></span> <span
             style="font-size:10px;color:#555">▸ details</span></h2>
     <div class="section">
-        <input type="text" id="quickProxy" placeholder="host:port:user:pass" style="color:#1d9bf0;margin-bottom:6px">
+        <div style="display:flex;gap:4px;margin-bottom:6px">
+            <input type="text" id="quickProxy" placeholder="host:port:user:pass" style="color:#1d9bf0;flex:1">
+            <select id="proxyType" style="width:80px;padding:4px">
+                <option value="http">HTTP</option>
+                <option value="socks">SOCKS5</option>
+            </select>
+        </div>
         <div class="btn-row">
             <button class="btn-blue" id="btnApplyProxy">🔗 Apply</button>
             <button class="btn-orange btn-sm" id="btnToggleProxyPaste">📋 List</button>
@@ -434,13 +440,6 @@ host:port:user:pass"></textarea>
         </div>
         <div id="proxyDetails" style="display:none">
             <div class="row">
-                <div>
-                    <label>Type</label>
-                    <select id="proxyType">
-                        <option value="http">HTTP</option>
-                        <option value="socks">SOCKS5</option>
-                    </select>
-                </div>
                 <div style="flex:2">
                     <label>Host</label>
                     <input type="text" id="proxyHost">
