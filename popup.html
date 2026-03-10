@@ -421,9 +421,11 @@ user2 | pass2 | 2fa2 | email2"></textarea>
             style="font-size:10px;color:#666;margin-left:auto" id="proxyCounter"></span> <span
             style="font-size:10px;color:#555">▸ details</span></h2>
     <div class="section">
+        <input type="text" id="quickProxy" placeholder="host:port:user:pass" style="color:#1d9bf0;margin-bottom:6px">
         <div class="btn-row">
-            <button class="btn-orange" id="btnToggleProxyPaste">📋 Paste list</button>
-            <button class="btn-blue" id="btnNextProxy">⏭ Next</button>
+            <button class="btn-blue" id="btnApplyProxy">🔗 Apply</button>
+            <button class="btn-orange btn-sm" id="btnToggleProxyPaste">📋 List</button>
+            <button class="btn-blue btn-sm" id="btnNextProxy">⏭ Next</button>
         </div>
         <div class="paste-area" id="proxyPasteArea">
             <textarea id="proxyTextarea" rows="3" placeholder="One per line:
@@ -431,8 +433,6 @@ host:port:user:pass"></textarea>
             <button class="btn-blue" id="btnLoadProxies">Load</button>
         </div>
         <div id="proxyDetails" style="display:none">
-            <label style="margin-top:6px">Current</label>
-            <input type="text" id="quickProxy" placeholder="host:port:user:pass" readonly style="color:#1d9bf0">
             <div class="row">
                 <div>
                     <label>Type</label>

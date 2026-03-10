@@ -289,6 +289,30 @@ function fillProxyFields(p) {
     document.getElementById("quickProxy").value = [p.host, p.port, p.username, p.password].filter(Boolean).join(":");
 }
 
+// Quick apply single proxy from input
+document.getElementById("btnApplyProxy").addEventListener("click", () => {
+    const raw = document.getElementById("quickProxy").value.trim();
+    if (!raw) { setStatus("proxyStatus", "Paste a proxy first", "err"); return; }
+    const parts = raw.split(":");
+    if (parts.length < 2) { setStatus("proxyStatus", "Format: host:port:user:pass", "err"); return; }
+    const [host, port, username, password] = [parts[0], parts[1], parts[2] || "", parts[3] || ""];
+    const type = document.getElementById("proxyType").value;
+
+    // Also fill detail fields
+    document.getElementById("proxyHost").value = host;
+    document.getElementById("proxyPort").value = port;
+    document.getElementById("proxyUser").value = username;
+    document.getElementById("proxyPass").value = password;
+
+    browser.runtime.sendMessage({ action: "setTabProxy", tabId: currentTabId, host, port, username, password, type }, (resp) => {
+        if (resp && resp.success) {
+            document.getElementById("proxyDot").classList.add("on");
+            setStatus("proxyStatus", `✓ Proxy ${host}:${port} → tab #${currentTabId}`, "ok");
+            browser.storage.local.set({ lastProxy: raw });
+        }
+    });
+});
+
 document.getElementById("btnConnect").addEventListener("click", () => {
     const host = document.getElementById("proxyHost").value.trim();
     const port = document.getElementById("proxyPort").value.trim();
