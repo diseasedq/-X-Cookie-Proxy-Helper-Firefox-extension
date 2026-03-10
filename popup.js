@@ -150,6 +150,28 @@ function selectAccount(idx) {
     // Persist selection
     browser.storage.local.set({ selectedAccIdx: idx });
 
+    // Auto-generate 2FA
+    if (acc.mfa && acc.mfa.length > 5) {
+        generateTOTP(acc.mfa).then(code => {
+            if (code) {
+                document.getElementById("totpCode").textContent = code;
+                document.getElementById("totpResult").style.display = "block";
+                navigator.clipboard.writeText(code);
+                setStatus("accStatus", "✓ 2FA code copied!", "ok");
+                // Start timer
+                if (totpInterval) clearInterval(totpInterval);
+                totpInterval = setInterval(async () => {
+                    const remaining = totpSecondsRemaining();
+                    document.getElementById("totpTimer").textContent = `${remaining}s`;
+                    if (remaining >= 29) {
+                        const newCode = await generateTOTP(acc.mfa);
+                        document.getElementById("totpCode").textContent = newCode;
+                    }
+                }, 1000);
+            }
+        });
+    }
+
     renderAccountList();
 }
 
@@ -324,7 +346,6 @@ document.getElementById("btnNext").addEventListener("click", () => {
 
         setTimeout(() => {
             browser.tabs.create({ url: "https://x.com/i/flow/login" }).then((newTab) => {
-                browser.tabs.remove(currentTabId);
                 currentTabId = newTab.id;
                 document.getElementById("tabInfo").innerHTML =
                     `Tab #${currentTabId}: <strong>x.com/i/flow/login</strong>`;
