@@ -465,17 +465,17 @@ user2 | pass2 | 2fa2 | email2"></textarea>
     </div>
 
     <!-- COOKIES SECTION -->
-    <h2>🍪 X.com Cookies</h2>
+    <h2>🍪 Cookies <span style="font-size:10px;color:#666;margin-left:auto" id="batchCounter"></span></h2>
     <div class="section">
         <div id="linkedAccount" style="font-size:11px;color:#666;margin-bottom:6px;display:none">
             💾 Save with: <strong style="color:#1d9bf0" id="linkedName">—</strong>
         </div>
-        <button class="btn-green" id="btnGetCookies">Extract auth_token + ct0</button>
+        <button class="btn-green" id="btnExtractSave" style="font-size:13px;padding:10px">🍪 Extract & Save</button>
         <div class="cookie-output" id="cookieOutput"></div>
         <div class="btn-row">
             <button class="btn-gray" id="btnCopyJson" style="display:none">📋 JSON</button>
             <button class="btn-gray" id="btnCopyLine" style="display:none">📋 Line</button>
-            <button class="btn-green" id="btnSaveFile" style="display:none">💾 Save</button>
+            <button class="btn-gray" id="btnDownloadBatch" style="display:none">📥 Download all</button>
         </div>
         <div class="status" id="cookieStatus"></div>
     </div>

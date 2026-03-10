@@ -25,7 +25,7 @@ async function init() {
         });
     }
 
-    browser.storage.local.get(["savedAccounts", "lastProxy", "saveCounter", "selectedAccIdx", "savedProxies", "proxyIdx"], (data) => {
+    browser.storage.local.get(["savedAccounts", "lastProxy", "saveCounter", "selectedAccIdx", "savedProxies", "proxyIdx", "batchLines"], (data) => {
         if (data.savedAccounts && data.savedAccounts.length > 0) {
             accounts = data.savedAccounts;
             if (data.selectedAccIdx >= 0 && data.selectedAccIdx < accounts.length) {
@@ -42,6 +42,11 @@ async function init() {
             if (proxyIdx >= 0 && proxyIdx < proxyList.length) {
                 fillProxyFields(proxyList[proxyIdx]);
             }
+        }
+        if (data.batchLines && data.batchLines.length > 0) {
+            batchLines = data.batchLines;
+            document.getElementById("batchCounter").textContent = `saved: ${batchLines.length}`;
+            document.getElementById("btnDownloadBatch").style.display = "block";
         }
     });
 }
@@ -350,22 +355,54 @@ document.getElementById("btnReset").addEventListener("click", () => {
     });
 });
 
-// ==================== COOKIES ====================
+// ==================== COOKIES: EXTRACT & SAVE ====================
 
-document.getElementById("btnGetCookies").addEventListener("click", () => {
+let batchLines = [];
+
+document.getElementById("btnExtractSave").addEventListener("click", () => {
     browser.runtime.sendMessage({ action: "getCookies" }, (cookies) => {
         const authToken = cookies.auth_token || "";
         const ct0 = cookies.ct0 || "";
-        if (!authToken && !ct0) { setStatus("cookieStatus", "No X.com cookies. Log in first!", "err"); return; }
-        lastCookies = { auth_token: authToken, ct0 };
+        if (!authToken && !ct0) { setStatus("cookieStatus", "No cookies — log in first!", "err"); return; }
 
+        lastCookies = { auth_token: authToken, ct0 };
+        saveCounter++;
+        browser.storage.local.set({ saveCounter });
+
+        // Build line
+        const acc = selectedAccIdx >= 0 ? accounts[selectedAccIdx] : null;
+        const accInfo = acc ? `${acc.username} ${acc.password}` : "log pass";
+        const line = `${saveCounter}. auth_token=${authToken} ct0=${ct0} ${accInfo}`;
+
+        // Add to batch
+        batchLines.push(line);
+        browser.storage.local.set({ batchLines });
+
+        // Show in UI
         const box = document.getElementById("cookieOutput");
-        box.innerHTML = `<span class="ck">auth_token:</span> <span class="cv">${authToken || "—"}</span><br><span class="ck">ct0:</span> <span class="cv">${ct0 || "—"}</span>`;
+        box.innerHTML = `<span class="ck">auth_token:</span> <span class="cv">${authToken.substring(0, 20)}...</span><br><span class="ck">ct0:</span> <span class="cv">${ct0.substring(0, 20)}...</span>`;
         box.classList.add("visible");
         document.getElementById("btnCopyJson").style.display = "block";
         document.getElementById("btnCopyLine").style.display = "block";
-        document.getElementById("btnSaveFile").style.display = "block";
-        setStatus("cookieStatus", "✓ Extracted", "ok");
+        document.getElementById("btnDownloadBatch").style.display = "block";
+        document.getElementById("batchCounter").textContent = `saved: ${batchLines.length}`;
+
+        // Auto-save batch file
+        const date = new Date().toISOString().split("T")[0];
+        const filename = `handshake/${date}.txt`;
+        const content = batchLines.join("\n");
+
+        browser.runtime.sendMessage({
+            action: "saveCookieFile",
+            content: content,
+            filename: filename
+        }, (resp) => {
+            if (resp && resp.success) {
+                setStatus("cookieStatus", `✓ #${saveCounter} saved (${batchLines.length} total)`, "ok");
+            } else {
+                setStatus("cookieStatus", `Save error: ${resp?.error || "unknown"}`, "err");
+            }
+        });
     });
 });
 
@@ -381,34 +418,16 @@ document.getElementById("btnCopyLine").addEventListener("click", () => {
     setStatus("cookieStatus", "✓ Line copied!", "ok");
 });
 
-// ==================== SAVE TO FILE ====================
-
-document.getElementById("btnSaveFile").addEventListener("click", () => {
-    if (!lastCookies) return;
-
-    saveCounter++;
-    browser.storage.local.set({ saveCounter });
-
-    const now = new Date();
-    const date = now.toISOString().split("T")[0]; // YYYY-MM-DD
-
-    // Build line: N. auth_token=xxx ct0=xxx log pass
-    const acc = selectedAccIdx >= 0 ? accounts[selectedAccIdx] : null;
-    const accInfo = acc ? `${acc.username} ${acc.password}` : "log pass";
-
-    const line = `${saveCounter}. auth_token=${lastCookies.auth_token} ct0=${lastCookies.ct0} ${accInfo}`;
-
-    const filename = `handshake/${date}_${saveCounter}.txt`;
-
+document.getElementById("btnDownloadBatch").addEventListener("click", () => {
+    if (batchLines.length === 0) return;
+    const date = new Date().toISOString().split("T")[0];
+    const content = batchLines.join("\n");
+    const filename = `handshake/${date}_all.txt`;
     browser.runtime.sendMessage({
-        action: "saveCookieFile",
-        content: line,
-        filename: filename
+        action: "saveCookieFile", content, filename
     }, (resp) => {
         if (resp && resp.success) {
-            setStatus("cookieStatus", `✓ Saved → ${filename}`, "ok");
-        } else {
-            setStatus("cookieStatus", `Save error: ${resp?.error || "unknown"}`, "err");
+            setStatus("cookieStatus", `✓ Batch file: ${batchLines.length} accounts`, "ok");
         }
     });
 });
