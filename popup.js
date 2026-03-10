@@ -233,6 +233,11 @@ document.getElementById("btnCopyTotp").addEventListener("click", () => {
 let proxyList = [];
 let proxyIdx = -1;
 
+document.getElementById("proxyHeader").addEventListener("click", () => {
+    const d = document.getElementById("proxyDetails");
+    d.style.display = d.style.display === "none" ? "block" : "none";
+});
+
 document.getElementById("btnToggleProxyPaste").addEventListener("click", () => {
     document.getElementById("proxyPasteArea").classList.toggle("visible");
 });
