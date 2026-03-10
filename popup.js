@@ -246,16 +246,23 @@ document.getElementById("btnLoadProxies").addEventListener("click", () => {
     const text = document.getElementById("proxyTextarea").value.trim();
     if (!text) { setStatus("proxyStatus", "Paste proxies first!", "err"); return; }
 
+    const type = document.getElementById("proxyType").value;
     proxyList = text.split("\n").map(l => l.trim()).filter(l => l && !l.startsWith("#")).map(line => {
         const parts = line.split(":").map(s => s.trim());
-        return { host: parts[0], port: parts[1], username: parts[2] || "", password: parts[3] || "" };
+        let port = parts[1];
+        // Auto-fix webshare ports: SOCKS5 uses 1080, HTTP uses 80
+        if (parts[0].includes("webshare")) {
+            if (type === "socks" && port === "80") port = "1080";
+            if (type === "http" && port === "1080") port = "80";
+        }
+        return { host: parts[0], port, username: parts[2] || "", password: parts[3] || "" };
     }).filter(p => p.host && p.port);
 
     proxyIdx = -1;
     browser.storage.local.set({ savedProxies: proxyList, proxyIdx });
     document.getElementById("proxyPasteArea").classList.remove("visible");
     document.getElementById("proxyCounter").textContent = `0/${proxyList.length}`;
-    setStatus("proxyStatus", `Loaded ${proxyList.length} proxies`, "ok");
+    setStatus("proxyStatus", `Loaded ${proxyList.length} proxies (${type.toUpperCase()})`, "ok");
 });
 
 document.getElementById("btnNextProxy").addEventListener("click", () => {
