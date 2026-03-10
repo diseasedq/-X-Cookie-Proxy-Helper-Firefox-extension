@@ -8,12 +8,6 @@ browser.proxy.onRequest.addListener(
     (requestInfo) => {
         if (!activeProxy) return { type: "direct" };
 
-        const url = requestInfo.url || "";
-        // Only proxy x.com and twitter.com
-        if (!url.includes("x.com") && !url.includes("twitter.com")) {
-            return { type: "direct" };
-        }
-
         const isSocks = activeProxy.type === "socks";
         const proxyInfo = {
             type: isSocks ? "socks" : "http",
