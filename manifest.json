@@ -1,0 +1,32 @@
+{
+    "manifest_version": 2,
+    "name": "X Cookie & Proxy Helper",
+    "version": "1.0",
+    "description": "Per-tab proxy switch + X.com cookie extractor",
+    "permissions": [
+        "proxy",
+        "cookies",
+        "storage",
+        "activeTab",
+        "tabs",
+        "webRequest",
+        "webRequestBlocking",
+        "downloads",
+        "<all_urls>"
+    ],
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "x-helper@xrecap.dev",
+            "strict_min_version": "91.0"
+        }
+    },
+    "background": {
+        "scripts": [
+            "background.js"
+        ]
+    },
+    "browser_action": {
+        "default_popup": "popup.html",
+        "default_title": "X Helper"
+    }
+}
