@@ -39,7 +39,9 @@ async function init() {
             proxyIdx = data.proxyIdx >= 0 ? data.proxyIdx : -1;
             document.getElementById("proxyCounter").textContent = `${proxyIdx + 1}/${proxyList.length}`;
             if (proxyIdx >= 0 && proxyIdx < proxyList.length) {
-                fillProxyFields(proxyList[proxyIdx]);
+                const p = proxyList[proxyIdx];
+                fillProxyFields(p);
+                document.getElementById("quickProxy").value = `${p.host}:${p.port}:${p.username}:${p.password}`;
             }
         }
         if (data.batchLines && data.batchLines.length > 0) {
@@ -392,11 +394,10 @@ document.getElementById("btnNext").addEventListener("click", () => {
         setTimeout(() => {
             // Open in a different window (not the extension window)
             browser.windows.getAll().then(wins => {
-                // Find a window that is NOT the extension window
                 const extWinId = extensionWindowId || browser.windows.WINDOW_ID_CURRENT;
                 const mainWin = wins.find(w => w.id !== extWinId && w.type === "normal");
 
-                const createOpts = { url: "https://x.com/i/flow/login" };
+                const createOpts = { url: "https://x.com/i/flow/login", active: true };
                 if (mainWin) {
                     createOpts.windowId = mainWin.id;
                 }
@@ -406,18 +407,25 @@ document.getElementById("btnNext").addEventListener("click", () => {
                     document.getElementById("tabInfo").innerHTML =
                         `Tab #${currentTabId}: <strong>x.com/i/flow/login</strong>`;
 
-                    // Apply proxy to new tab
+                    // Focus the main window
+                    if (mainWin) {
+                        browser.windows.update(mainWin.id, { focused: true });
+                    }
+
+                    // Apply proxy to new tab (no reload — tab is fresh)
                     if (proxyToApply) {
                         const type = document.getElementById("proxyType").value;
                         browser.runtime.sendMessage({
                             action: "setTabProxy", tabId: currentTabId,
                             host: proxyToApply.host, port: proxyToApply.port,
-                            username: proxyToApply.username, password: proxyToApply.password, type
+                            username: proxyToApply.username, password: proxyToApply.password,
+                            type, noReload: true
                         });
                         document.getElementById("proxyDot").classList.add("on");
                     }
 
                     document.getElementById("cookieOutput")?.classList.remove("visible");
+                    renderAccountList();
                     setStatus("resetStatus", `✓ ${accName} copied + ${proxyInfo} → ready!`, "ok");
                 });
             });

@@ -60,9 +60,9 @@ browser.tabs.onRemoved.addListener((tabId) => {
 browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     if (msg.action === "setTabProxy") {
-        const { tabId, host, port, username, password, type } = msg;
+        const { tabId, host, port, username, password, type, noReload } = msg;
         tabProxies[tabId] = { host, port, username, password, type: type || "http" };
-        browser.tabs.reload(tabId);
+        if (!noReload) browser.tabs.reload(tabId);
         sendResponse({ success: true, tabId });
         return;
     }
@@ -174,6 +174,62 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                     sendResponse({ success: true, count: counter });
                 });
             });
+        }).catch(err => sendResponse({ success: false, error: err.message }));
+        return true;
+    }
+    if (msg.action === "triggerNext") {
+        // Called by content script after auto-save completes
+        // Reset session → cycle account/proxy → open new tab in main window
+        Promise.all([
+            browser.cookies.getAll({ domain: ".x.com" }),
+            browser.cookies.getAll({ domain: ".twitter.com" })
+        ]).then(([xc, tc]) => {
+            const removals = [...xc, ...tc].map(c =>
+                browser.cookies.remove({ url: `https://${c.domain}${c.path}`, name: c.name })
+            );
+            return Promise.all(removals);
+        }).then(() => {
+            return browser.browsingData.remove({}, { cache: true, localStorage: true, indexedDB: true, serviceWorkers: true });
+        }).then(() => {
+            return browser.storage.local.get(["savedAccounts", "selectedAccIdx", "savedProxies", "proxyIdx", "proxyType"]);
+        }).then(data => {
+            const accounts = data.savedAccounts || [];
+            const proxies = data.savedProxies || [];
+            const type = data.proxyType || "http";
+
+            // Cycle account
+            let accIdx = (data.selectedAccIdx >= 0 ? data.selectedAccIdx + 1 : 0) % (accounts.length || 1);
+            // Cycle proxy
+            let pIdx = (data.proxyIdx >= 0 ? data.proxyIdx + 1 : 0) % (proxies.length || 1);
+
+            browser.storage.local.set({ selectedAccIdx: accIdx, proxyIdx: pIdx });
+
+            // Copy username
+            const acc = accounts[accIdx];
+
+            // Open in main window after delay
+            setTimeout(() => {
+                browser.windows.getAll().then(wins => {
+                    const mainWin = wins.find(w => w.type === "normal");
+                    const opts = { url: "https://x.com/i/flow/login", active: true };
+                    if (mainWin) opts.windowId = mainWin.id;
+
+                    browser.tabs.create(opts).then(newTab => {
+                        if (mainWin) browser.windows.update(mainWin.id, { focused: true });
+
+                        // Apply proxy
+                        const proxy = proxies[pIdx];
+                        if (proxy) {
+                            tabProxies[newTab.id] = {
+                                host: proxy.host, port: proxy.port,
+                                username: proxy.username, password: proxy.password,
+                                type: type
+                            };
+                        }
+                        sendResponse({ success: true, tabId: newTab.id });
+                    });
+                });
+            }, 1500);
         }).catch(err => sendResponse({ success: false, error: err.message }));
         return true;
     }
