@@ -280,13 +280,70 @@ document.getElementById("btnDisconnect").addEventListener("click", () => {
 
 // ==================== SESSION RESET ====================
 
+// ==================== ⚡ NEXT (ALL IN ONE) ====================
+
+document.getElementById("btnNext").addEventListener("click", () => {
+    setStatus("resetStatus", "⚡ Resetting...", "");
+
+    browser.runtime.sendMessage({ action: "resetSession", tabId: currentTabId }, (resp) => {
+        if (!resp || !resp.success) {
+            setStatus("resetStatus", `Error: ${resp?.error || "unknown"}`, "err");
+            return;
+        }
+
+        // 1. Next account
+        if (accounts.length > 0) {
+            selectedAccIdx = (selectedAccIdx + 1) % accounts.length;
+            selectAccount(selectedAccIdx);
+        }
+
+        // 2. Next proxy + auto-apply to new tab
+        let proxyToApply = null;
+        if (proxyList.length > 0) {
+            proxyIdx = (proxyIdx + 1) % proxyList.length;
+            browser.storage.local.set({ proxyIdx });
+            proxyToApply = proxyList[proxyIdx];
+            fillProxyFields(proxyToApply);
+            document.getElementById("proxyCounter").textContent = `${proxyIdx + 1}/${proxyList.length}`;
+        }
+
+        // 3. Open fresh tab
+        browser.tabs.create({ url: "https://x.com/i/flow/login" }).then((newTab) => {
+            browser.tabs.remove(currentTabId);
+            currentTabId = newTab.id;
+            document.getElementById("tabInfo").innerHTML =
+                `Tab #${currentTabId}: <strong>x.com/i/flow/login</strong>`;
+
+            // 4. Apply proxy to new tab
+            if (proxyToApply) {
+                const type = document.getElementById("proxyType").value;
+                browser.runtime.sendMessage({
+                    action: "setTabProxy", tabId: currentTabId,
+                    host: proxyToApply.host, port: proxyToApply.port,
+                    username: proxyToApply.username, password: proxyToApply.password, type
+                });
+                document.getElementById("proxyDot").classList.add("on");
+            }
+
+            document.getElementById("cookieOutput")?.classList.remove("visible");
+            const accName = selectedAccIdx >= 0 ? `@${accounts[selectedAccIdx].username}` : "";
+            const proxyInfo = proxyToApply ? `proxy ${proxyIdx + 1}/${proxyList.length}` : "no proxy";
+            setStatus("resetStatus", `✓ ${accName} + ${proxyInfo} → ready!`, "ok");
+        });
+    });
+});
+
+// Reset only (no account/proxy cycling)
 document.getElementById("btnReset").addEventListener("click", () => {
     setStatus("resetStatus", "Clearing...", "");
     browser.runtime.sendMessage({ action: "resetSession", tabId: currentTabId }, (resp) => {
         if (resp && resp.success) {
             document.getElementById("proxyDot").classList.remove("on");
-            document.getElementById("cookieOutput")?.classList.remove("visible");
-            setStatus("resetStatus", "✓ Session cleared! Reload tab for fresh start.", "ok");
+            browser.tabs.create({ url: "https://x.com/i/flow/login" }).then((newTab) => {
+                browser.tabs.remove(currentTabId);
+                currentTabId = newTab.id;
+                setStatus("resetStatus", "✓ Reset done, fresh tab", "ok");
+            });
         } else {
             setStatus("resetStatus", `Error: ${resp?.error || "unknown"}`, "err");
         }

@@ -452,13 +452,15 @@ user2 | pass2 | 2fa2 | email2"></textarea>
         <div class="status" id="proxyStatus"></div>
     </div>
 
-    <!-- SESSION RESET -->
-    <h2>🔄 Session</h2>
+    <!-- NEXT = reset + next acc + next proxy + new tab -->
+    <h2>⚡ Next Account</h2>
     <div class="section">
-        <button class="btn-red" id="btnReset" style="font-size:13px">🔄 Reset session (clear cookies + cache +
-            proxy)</button>
-        <div class="hint" style="margin-top:4px">Clears all X.com cookies, cache, localStorage. New fingerprint on
-            reload.</div>
+        <button class="btn-green" id="btnNext" style="font-size:14px;padding:12px">⚡ NEXT — reset + new account + new
+            proxy + new tab</button>
+        <div class="hint" style="margin-top:4px">Clears session → next account → next proxy → opens x.com login</div>
+        <div class="btn-row" style="margin-top:6px">
+            <button class="btn-red btn-sm" id="btnReset">🔄 Reset only</button>
+        </div>
         <div class="status" id="resetStatus"></div>
     </div>
 
