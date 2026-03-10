@@ -24,7 +24,7 @@ async function init() {
         });
     }
 
-    browser.storage.local.get(["savedAccounts", "lastProxy", "saveCounter", "selectedAccIdx", "savedProxies", "proxyIdx", "batchLines", "doneAccounts"], (data) => {
+    browser.storage.local.get(["savedAccounts", "lastProxy", "saveCounter", "selectedAccIdx", "savedProxies", "proxyIdx", "batchLines", "doneAccounts", "proxyType", "clipChainEnabled"], (data) => {
         if (data.savedAccounts && data.savedAccounts.length > 0) {
             accounts = data.savedAccounts;
             if (data.selectedAccIdx >= 0 && data.selectedAccIdx < accounts.length) {
@@ -49,6 +49,9 @@ async function init() {
         }
         if (data.doneAccounts && data.doneAccounts.length > 0) {
             doneAccounts = new Set(data.doneAccounts);
+        }
+        if (data.proxyType) {
+            document.getElementById("proxyType").value = data.proxyType;
         }
     });
 }
@@ -238,6 +241,10 @@ document.getElementById("proxyHeader").addEventListener("click", () => {
     d.style.display = d.style.display === "none" ? "block" : "none";
 });
 
+document.getElementById("proxyType").addEventListener("change", () => {
+    browser.storage.local.set({ proxyType: document.getElementById("proxyType").value });
+});
+
 document.getElementById("btnToggleProxyPaste").addEventListener("click", () => {
     document.getElementById("proxyPasteArea").classList.toggle("visible");
 });
@@ -273,17 +280,19 @@ document.getElementById("btnNextProxy").addEventListener("click", () => {
     const p = proxyList[proxyIdx];
 
     fillProxyFields(p);
+    document.getElementById("quickProxy").value = `${p.host}:${p.port}:${p.username}:${p.password}`;
     document.getElementById("proxyCounter").textContent = `${proxyIdx + 1}/${proxyList.length}`;
 
     // Auto-apply to tab
     const type = document.getElementById("proxyType").value;
+    setStatus("proxyStatus", `⏳ ${type.toUpperCase()} ${p.host}:${p.port}...`, "");
     browser.runtime.sendMessage({
         action: "setTabProxy", tabId: currentTabId,
         host: p.host, port: p.port, username: p.username, password: p.password, type
     }, (resp) => {
         if (resp && resp.success) {
             document.getElementById("proxyDot").classList.add("on");
-            setStatus("proxyStatus", `✓ Proxy ${proxyIdx + 1}/${proxyList.length} → tab`, "ok");
+            setStatus("proxyStatus", `✓ ${type.toUpperCase()} ${p.host}:${p.port} → tab #${currentTabId}`, "ok");
         }
     });
 });
