@@ -1,45 +1,29 @@
-// Global proxy for x.com/twitter.com
-// All requests to these domains go through the active proxy
+// Global proxy management
+let activeProxy = null;
 
-let activeProxy = null; // { host, port, username, password, type }
-
-// Global proxy routing for x.com
-browser.proxy.onRequest.addListener(
-    (requestInfo) => {
-        if (!activeProxy) return { type: "direct" };
-
-        const isSocks = activeProxy.type === "socks";
-        const proxyInfo = {
-            type: isSocks ? "socks" : "http",
-            host: activeProxy.host,
-            port: parseInt(activeProxy.port),
-            failoverTimeout: 5
-        };
-        if (isSocks) {
-            proxyInfo.proxyDNS = true;
-            if (activeProxy.username) {
-                proxyInfo.username = activeProxy.username;
-                proxyInfo.password = activeProxy.password || "";
-            }
+browser.proxy.onRequest.addListener((requestInfo) => {
+    if (!activeProxy) return { type: "direct" };
+    const isSocks = activeProxy.type === "socks";
+    const info = {
+        type: isSocks ? "socks" : "http",
+        host: activeProxy.host,
+        port: parseInt(activeProxy.port)
+    };
+    if (isSocks) {
+        info.proxyDNS = true;
+        if (activeProxy.username) {
+            info.username = activeProxy.username;
+            info.password = activeProxy.password || "";
         }
-        console.log(`[PROXY] ${proxyInfo.type}://${proxyInfo.host}:${proxyInfo.port} for ${requestInfo.url.substring(0, 60)}`);
-        return [proxyInfo];
-    },
-    { urls: ["<all_urls>"] }
-);
+    }
+    return info;
+}, { urls: ["<all_urls>"] });
 
-// HTTP proxy authentication
-browser.webRequest.onAuthRequired.addListener(
-    (details) => {
-        if (activeProxy && details.isProxy && activeProxy.username) {
-            console.log(`[PROXY AUTH] Sending credentials for ${activeProxy.username}`);
-            return { authCredentials: { username: activeProxy.username, password: activeProxy.password || "" } };
-        }
-        return;
-    },
-    { urls: ["<all_urls>"] },
-    ["blocking"]
-);
+browser.webRequest.onAuthRequired.addListener((details) => {
+    if (activeProxy && details.isProxy && activeProxy.username) {
+        return { authCredentials: { username: activeProxy.username, password: activeProxy.password || "" } };
+    }
+}, { urls: ["<all_urls>"] }, ["blocking"]);
 
 browser.proxy.onError.addListener((error) => {
     console.error("Proxy error:", error.message);
