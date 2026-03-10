@@ -9,12 +9,13 @@ browser.proxy.onRequest.addListener(
         const tabId = requestInfo.tabId;
         if (tabId > 0 && tabProxies[tabId]) {
             const p = tabProxies[tabId];
+            const isSocks = p.type === "socks";
             const proxyInfo = {
-                type: p.type === "socks" ? "socks" : "http",
+                type: isSocks ? "socks" : "http",
                 host: p.host,
                 port: parseInt(p.port),
-                proxyDNS: true
             };
+            if (isSocks) proxyInfo.proxyDNS = true;
             // SOCKS supports inline auth
             if (p.type === "socks" && p.username) {
                 proxyInfo.username = p.username;
