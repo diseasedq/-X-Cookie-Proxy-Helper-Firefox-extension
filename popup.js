@@ -343,24 +343,36 @@ document.getElementById("btnNext").addEventListener("click", () => {
         setStatus("resetStatus", `⏳ ${accName} + ${proxyInfo} — connecting proxy...`, "");
 
         setTimeout(() => {
-            browser.tabs.create({ url: "https://x.com/i/flow/login" }).then((newTab) => {
-                currentTabId = newTab.id;
-                document.getElementById("tabInfo").innerHTML =
-                    `Tab #${currentTabId}: <strong>x.com/i/flow/login</strong>`;
+            // Open in a different window (not the extension window)
+            browser.windows.getAll().then(wins => {
+                // Find a window that is NOT the extension window
+                const extWinId = extensionWindowId || browser.windows.WINDOW_ID_CURRENT;
+                const mainWin = wins.find(w => w.id !== extWinId && w.type === "normal");
 
-                // Apply proxy to new tab
-                if (proxyToApply) {
-                    const type = document.getElementById("proxyType").value;
-                    browser.runtime.sendMessage({
-                        action: "setTabProxy", tabId: currentTabId,
-                        host: proxyToApply.host, port: proxyToApply.port,
-                        username: proxyToApply.username, password: proxyToApply.password, type
-                    });
-                    document.getElementById("proxyDot").classList.add("on");
+                const createOpts = { url: "https://x.com/i/flow/login" };
+                if (mainWin) {
+                    createOpts.windowId = mainWin.id;
                 }
 
-                document.getElementById("cookieOutput")?.classList.remove("visible");
-                setStatus("resetStatus", `✓ ${accName} copied + ${proxyInfo} → ready!`, "ok");
+                browser.tabs.create(createOpts).then((newTab) => {
+                    currentTabId = newTab.id;
+                    document.getElementById("tabInfo").innerHTML =
+                        `Tab #${currentTabId}: <strong>x.com/i/flow/login</strong>`;
+
+                    // Apply proxy to new tab
+                    if (proxyToApply) {
+                        const type = document.getElementById("proxyType").value;
+                        browser.runtime.sendMessage({
+                            action: "setTabProxy", tabId: currentTabId,
+                            host: proxyToApply.host, port: proxyToApply.port,
+                            username: proxyToApply.username, password: proxyToApply.password, type
+                        });
+                        document.getElementById("proxyDot").classList.add("on");
+                    }
+
+                    document.getElementById("cookieOutput")?.classList.remove("visible");
+                    setStatus("resetStatus", `✓ ${accName} copied + ${proxyInfo} → ready!`, "ok");
+                });
             });
         }, 1500);
     });
@@ -474,9 +486,17 @@ function setStatus(id, text, cls) {
     el.className = "status " + (cls || "");
 }
 
-// Open as tab button
+// Open as separate window
+let extensionWindowId = null;
 document.getElementById("btnPin").addEventListener("click", () => {
-    browser.tabs.create({ url: browser.runtime.getURL("popup.html") });
+    browser.windows.create({
+        url: browser.runtime.getURL("popup.html"),
+        type: "popup",
+        width: 420,
+        height: 700
+    }).then(win => {
+        extensionWindowId = win.id;
+    });
     window.close();
 });
 
