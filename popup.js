@@ -378,20 +378,22 @@ document.getElementById("btnNext").addEventListener("click", () => {
             navigator.clipboard.writeText(acc.username);
         }
 
-        // 2. Next proxy
+        // 2. Next proxy (from list or keep current)
         let proxyToApply = null;
+        let proxyInfo = "current proxy";
         if (proxyList.length > 0) {
             proxyIdx = (proxyIdx + 1) % proxyList.length;
             browser.storage.local.set({ proxyIdx });
             proxyToApply = proxyList[proxyIdx];
             fillProxyFields(proxyToApply);
+            document.getElementById("quickProxy").value = `${proxyToApply.host}:${proxyToApply.port}:${proxyToApply.username}:${proxyToApply.password}`;
             document.getElementById("proxyCounter").textContent = `${proxyIdx + 1}/${proxyList.length}`;
+            proxyInfo = `proxy ${proxyIdx + 1}/${proxyList.length}`;
         }
 
         // 3. Wait 1.5s for proxy to be ready, then open tab
         const accName = selectedAccIdx >= 0 ? `@${accounts[selectedAccIdx].username}` : "";
-        const proxyInfo = proxyToApply ? `proxy ${proxyIdx + 1}/${proxyList.length}` : "no proxy";
-        setStatus("resetStatus", `⏳ ${accName} + ${proxyInfo} — connecting proxy...`, "");
+        setStatus("resetStatus", `⏳ ${accName} + ${proxyInfo} — opening tab...`, "");
 
         setTimeout(() => {
             // Open in a different window (not the extension window)

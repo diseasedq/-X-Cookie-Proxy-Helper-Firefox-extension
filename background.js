@@ -2,7 +2,7 @@
 let activeProxy = null;
 
 browser.proxy.onRequest.addListener((requestInfo) => {
-    if (!activeProxy) return { type: "direct" };
+    if (!activeProxy) return;  // don't interfere
     const isSocks = activeProxy.type === "socks";
     const info = {
         type: isSocks ? "socks" : "http",
