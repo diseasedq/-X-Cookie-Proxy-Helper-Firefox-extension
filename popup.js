@@ -362,66 +362,41 @@ document.getElementById("btnDisconnect").addEventListener("click", () => {
 // ==================== ⚡ NEXT (ALL IN ONE) ====================
 
 document.getElementById("btnNext").addEventListener("click", () => {
-    setStatus("resetStatus", "⚡ Resetting...", "");
+    setStatus("resetStatus", "⚡ Processing...", "");
 
-    browser.runtime.sendMessage({ action: "resetSession", tabId: currentTabId }, (resp) => {
+    browser.runtime.sendMessage({ action: "nextAll" }, (resp) => {
         if (!resp || !resp.success) {
             setStatus("resetStatus", `Error: ${resp?.error || "unknown"}`, "err");
             return;
         }
 
-        // 1. Next account + copy username to clipboard
-        if (accounts.length > 0) {
-            selectedAccIdx = (selectedAccIdx + 1) % accounts.length;
+        // Update UI from background response
+        currentTabId = resp.tabId;
+        document.getElementById("tabInfo").innerHTML =
+            `Tab #${currentTabId}: <strong>x.com/i/flow/login</strong>`;
+
+        // Update local state
+        if (resp.accIdx >= 0) {
+            selectedAccIdx = resp.accIdx;
             selectAccount(selectedAccIdx);
-            const acc = accounts[selectedAccIdx];
-            navigator.clipboard.writeText(acc.username);
+            if (resp.username) navigator.clipboard.writeText(resp.username);
         }
-
-        // 2. Next proxy (from list or keep current)
-        let proxyToApply = null;
-        let proxyInfo = "current proxy";
-        if (proxyList.length > 0) {
-            proxyIdx = (proxyIdx + 1) % proxyList.length;
-            browser.storage.local.set({ proxyIdx });
-            proxyToApply = proxyList[proxyIdx];
-            fillProxyFields(proxyToApply);
-            document.getElementById("quickProxy").value = `${proxyToApply.host}:${proxyToApply.port}:${proxyToApply.username}:${proxyToApply.password}`;
-            document.getElementById("proxyCounter").textContent = `${proxyIdx + 1}/${proxyList.length}`;
-            proxyInfo = `proxy ${proxyIdx + 1}/${proxyList.length}`;
-        }
-
-        const accName = selectedAccIdx >= 0 ? `@${accounts[selectedAccIdx].username}` : "";
-
-        // 3. Apply proxy from list if needed
-        if (proxyToApply) {
-            const type = document.getElementById("proxyType").value;
-            browser.runtime.sendMessage({
-                action: "setProxy",
-                host: proxyToApply.host, port: proxyToApply.port,
-                username: proxyToApply.username, password: proxyToApply.password, type
-            });
+        if (resp.proxyIdx >= 0) {
+            proxyIdx = resp.proxyIdx;
+            if (proxyList.length > 0) {
+                fillProxyFields(proxyList[proxyIdx]);
+                const p = proxyList[proxyIdx];
+                document.getElementById("quickProxy").value = `${p.host}:${p.port}:${p.username}:${p.password}`;
+                document.getElementById("proxyCounter").textContent = `${proxyIdx + 1}/${proxyList.length}`;
+            }
             document.getElementById("proxyDot").classList.add("on");
         }
 
-        // 4. Open new tab immediately
-        setStatus("resetStatus", `⏳ ${accName} + ${proxyInfo} — opening tab...`, "");
-        browser.windows.getAll().then(wins => {
-            const mainWin = wins.find(w => w.type === "normal");
-            const opts = { url: "https://x.com/i/flow/login", active: true };
-            if (mainWin) opts.windowId = mainWin.id;
-
-            return browser.tabs.create(opts);
-        }).then(newTab => {
-            currentTabId = newTab.id;
-            document.getElementById("tabInfo").innerHTML =
-                `Tab #${currentTabId}: <strong>x.com/i/flow/login</strong>`;
-            document.getElementById("cookieOutput")?.classList.remove("visible");
-            renderAccountList();
-            setStatus("resetStatus", `✓ ${accName} copied + ${proxyInfo} → ready!`, "ok");
-        }).catch(err => {
-            setStatus("resetStatus", `Error: ${err.message}`, "err");
-        });
+        document.getElementById("cookieOutput")?.classList.remove("visible");
+        renderAccountList();
+        const accName = resp.username ? `@${resp.username}` : "";
+        const proxyInfo = resp.proxyIdx >= 0 ? `proxy ${resp.proxyIdx + 1}` : "current proxy";
+        setStatus("resetStatus", `✓ ${accName} + ${proxyInfo} → ready!`, "ok");
     });
 });
 

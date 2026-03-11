@@ -80,7 +80,7 @@
                             showToast(`✅ Saved #${resp.count} → opening next...`);
                             // Auto-trigger next after short delay
                             setTimeout(() => {
-                                browser.runtime.sendMessage({ action: "triggerNext" });
+                                browser.runtime.sendMessage({ action: "nextAll" });
                             }, 1500);
                         }
                     });
