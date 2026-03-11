@@ -121,8 +121,10 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             );
             return Promise.all(removals);
         }).then(() => {
-            // 2. Clear cache + localStorage
-            return browser.browsingData.remove({}, {
+            // 2. Clear cache + localStorage for x.com only
+            return browser.browsingData.remove({
+                hostnames: ["x.com", "twitter.com"]
+            }, {
                 cache: true,
                 localStorage: true,
                 indexedDB: true,
