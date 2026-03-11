@@ -391,42 +391,37 @@ document.getElementById("btnNext").addEventListener("click", () => {
             proxyInfo = `proxy ${proxyIdx + 1}/${proxyList.length}`;
         }
 
-        // 3. Wait 1.5s for proxy to be ready, then open tab
         const accName = selectedAccIdx >= 0 ? `@${accounts[selectedAccIdx].username}` : "";
-        setStatus("resetStatus", `⏳ ${accName} + ${proxyInfo} — opening tab...`, "");
 
-        setTimeout(() => {
-            browser.windows.getAll().then(wins => {
-                const mainWin = wins.find(w => w.type === "normal");
-                const createOpts = { url: "https://x.com/i/flow/login", active: true };
-                if (mainWin) createOpts.windowId = mainWin.id;
-
-                browser.tabs.create(createOpts).then((newTab) => {
-                    currentTabId = newTab.id;
-                    document.getElementById("tabInfo").innerHTML =
-                        `Tab #${currentTabId}: <strong>x.com/i/flow/login</strong>`;
-
-                    if (mainWin) browser.windows.update(mainWin.id, { focused: true });
-
-                    // Apply proxy from list
-                    if (proxyToApply) {
-                        const type = document.getElementById("proxyType").value;
-                        browser.runtime.sendMessage({
-                            action: "setProxy",
-                            host: proxyToApply.host, port: proxyToApply.port,
-                            username: proxyToApply.username, password: proxyToApply.password, type
-                        });
-                        document.getElementById("proxyDot").classList.add("on");
-                    }
-
-                    document.getElementById("cookieOutput")?.classList.remove("visible");
-                    renderAccountList();
-                    setStatus("resetStatus", `✓ ${accName} copied + ${proxyInfo} → ready!`, "ok");
-                }).catch(err => {
-                    setStatus("resetStatus", `Tab error: ${err.message}`, "err");
-                });
+        // 3. Apply proxy from list if needed
+        if (proxyToApply) {
+            const type = document.getElementById("proxyType").value;
+            browser.runtime.sendMessage({
+                action: "setProxy",
+                host: proxyToApply.host, port: proxyToApply.port,
+                username: proxyToApply.username, password: proxyToApply.password, type
             });
-        }, 1500);
+            document.getElementById("proxyDot").classList.add("on");
+        }
+
+        // 4. Open new tab immediately
+        setStatus("resetStatus", `⏳ ${accName} + ${proxyInfo} — opening tab...`, "");
+        browser.windows.getAll().then(wins => {
+            const mainWin = wins.find(w => w.type === "normal");
+            const opts = { url: "https://x.com/i/flow/login", active: true };
+            if (mainWin) opts.windowId = mainWin.id;
+
+            return browser.tabs.create(opts);
+        }).then(newTab => {
+            currentTabId = newTab.id;
+            document.getElementById("tabInfo").innerHTML =
+                `Tab #${currentTabId}: <strong>x.com/i/flow/login</strong>`;
+            document.getElementById("cookieOutput")?.classList.remove("visible");
+            renderAccountList();
+            setStatus("resetStatus", `✓ ${accName} copied + ${proxyInfo} → ready!`, "ok");
+        }).catch(err => {
+            setStatus("resetStatus", `Error: ${err.message}`, "err");
+        });
     });
 });
 

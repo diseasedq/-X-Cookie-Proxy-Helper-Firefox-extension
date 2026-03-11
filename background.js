@@ -121,14 +121,14 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             );
             return Promise.all(removals);
         }).then(() => {
-            // 2. Clear cache + localStorage for x.com only
+            // 2. Clear cache + localStorage (scoped if possible)
             return browser.browsingData.remove({
                 hostnames: ["x.com", "twitter.com"]
             }, {
-                cache: true,
-                localStorage: true,
-                indexedDB: true,
-                serviceWorkers: true
+                cache: true, localStorage: true
+            }).catch(() => {
+                // Fallback: hostnames not supported, skip
+                return Promise.resolve();
             });
         }).then(() => {
             // 3. Done — keep proxy active
