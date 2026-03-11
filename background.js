@@ -129,8 +129,7 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 serviceWorkers: true
             });
         }).then(() => {
-            // 3. Clear proxy
-            activeProxy = null;
+            // 3. Done — keep proxy active
             sendResponse({ success: true });
         }).catch(err => {
             sendResponse({ success: false, error: err.message });

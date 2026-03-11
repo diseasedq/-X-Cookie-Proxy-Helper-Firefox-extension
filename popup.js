@@ -396,34 +396,25 @@ document.getElementById("btnNext").addEventListener("click", () => {
         setStatus("resetStatus", `⏳ ${accName} + ${proxyInfo} — opening tab...`, "");
 
         setTimeout(() => {
-            // Open in a different window (not the extension window)
             browser.windows.getAll().then(wins => {
-                const extWinId = extensionWindowId || browser.windows.WINDOW_ID_CURRENT;
-                const mainWin = wins.find(w => w.id !== extWinId && w.type === "normal");
-
+                const mainWin = wins.find(w => w.type === "normal");
                 const createOpts = { url: "https://x.com/i/flow/login", active: true };
-                if (mainWin) {
-                    createOpts.windowId = mainWin.id;
-                }
+                if (mainWin) createOpts.windowId = mainWin.id;
 
                 browser.tabs.create(createOpts).then((newTab) => {
                     currentTabId = newTab.id;
                     document.getElementById("tabInfo").innerHTML =
                         `Tab #${currentTabId}: <strong>x.com/i/flow/login</strong>`;
 
-                    // Focus the main window
-                    if (mainWin) {
-                        browser.windows.update(mainWin.id, { focused: true });
-                    }
+                    if (mainWin) browser.windows.update(mainWin.id, { focused: true });
 
-                    // Apply proxy to new tab (no reload — tab is fresh)
+                    // Apply proxy from list
                     if (proxyToApply) {
                         const type = document.getElementById("proxyType").value;
                         browser.runtime.sendMessage({
                             action: "setProxy",
                             host: proxyToApply.host, port: proxyToApply.port,
-                            username: proxyToApply.username, password: proxyToApply.password,
-                            type
+                            username: proxyToApply.username, password: proxyToApply.password, type
                         });
                         document.getElementById("proxyDot").classList.add("on");
                     }
@@ -431,6 +422,8 @@ document.getElementById("btnNext").addEventListener("click", () => {
                     document.getElementById("cookieOutput")?.classList.remove("visible");
                     renderAccountList();
                     setStatus("resetStatus", `✓ ${accName} copied + ${proxyInfo} → ready!`, "ok");
+                }).catch(err => {
+                    setStatus("resetStatus", `Tab error: ${err.message}`, "err");
                 });
             });
         }, 1500);
