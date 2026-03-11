@@ -1,8 +1,9 @@
-// Global proxy management
+// Dynamic proxy management — listener only active when proxy is set
 let activeProxy = null;
+let proxyListenerActive = false;
 
-browser.proxy.onRequest.addListener((requestInfo) => {
-    if (!activeProxy) return;  // don't interfere
+function proxyRequestHandler(requestInfo) {
+    if (!activeProxy) return;
     const isSocks = activeProxy.type === "socks";
     const info = {
         type: isSocks ? "socks" : "http",
@@ -17,13 +18,42 @@ browser.proxy.onRequest.addListener((requestInfo) => {
         }
     }
     return info;
-}, { urls: ["<all_urls>"] });
+}
 
-browser.webRequest.onAuthRequired.addListener((details) => {
+function authHandler(details) {
     if (activeProxy && details.isProxy && activeProxy.username) {
         return { authCredentials: { username: activeProxy.username, password: activeProxy.password || "" } };
     }
-}, { urls: ["<all_urls>"] }, ["blocking"]);
+}
+
+function enableProxy(proxy) {
+    activeProxy = proxy;
+    browser.storage.local.set({ activeProxy: proxy });
+    if (!proxyListenerActive) {
+        browser.proxy.onRequest.addListener(proxyRequestHandler, { urls: ["<all_urls>"] });
+        browser.webRequest.onAuthRequired.addListener(authHandler, { urls: ["<all_urls>"] }, ["blocking"]);
+        proxyListenerActive = true;
+    }
+    console.log(`[PROXY ON] ${proxy.type}://${proxy.host}:${proxy.port}`);
+}
+
+function disableProxy() {
+    activeProxy = null;
+    browser.storage.local.remove("activeProxy");
+    if (proxyListenerActive) {
+        browser.proxy.onRequest.removeListener(proxyRequestHandler);
+        browser.webRequest.onAuthRequired.removeListener(authHandler);
+        proxyListenerActive = false;
+    }
+    console.log("[PROXY OFF]");
+}
+
+// Restore proxy on startup
+browser.storage.local.get("activeProxy", (data) => {
+    if (data.activeProxy) {
+        enableProxy(data.activeProxy);
+    }
+});
 
 browser.proxy.onError.addListener((error) => {
     console.error("Proxy error:", error.message);
@@ -34,15 +64,13 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     if (msg.action === "setProxy") {
         const { host, port, username, password, type } = msg;
-        activeProxy = { host, port, username, password, type: type || "http" };
-        console.log(`[PROXY SET] ${type}://${host}:${port}`);
+        enableProxy({ host, port, username, password, type: type || "http" });
         sendResponse({ success: true });
         return;
     }
 
     if (msg.action === "clearProxy") {
-        activeProxy = null;
-        console.log("[PROXY CLEARED]");
+        disableProxy();
         sendResponse({ success: true });
         return;
     }
