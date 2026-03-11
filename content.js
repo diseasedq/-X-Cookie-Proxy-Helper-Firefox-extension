@@ -68,20 +68,30 @@
             attempts++;
             if (attempts > 60) { // 30 seconds max
                 clearInterval(check);
-                showToast("⚠️ Login timeout");
+                showToast("⚠️ Login timeout — no cookies found");
                 return;
             }
             browser.runtime.sendMessage({ action: "getCookies" }, (cookies) => {
                 if (cookies && cookies.auth_token && cookies.ct0) {
                     clearInterval(check);
+                    showToast("🍪 [1] Cookies found! Saving...");
                     // Trigger extract+save via background
                     browser.runtime.sendMessage({ action: "autoExtractSave" }, (resp) => {
                         if (resp && resp.success) {
-                            showToast(`✅ Saved #${resp.count} → opening next...`);
+                            showToast(`✅ [2] Saved #${resp.count} → opening next in 1.5s...`);
                             // Auto-trigger next after short delay
                             setTimeout(() => {
-                                browser.runtime.sendMessage({ action: "nextAll" });
+                                showToast("🚀 [3] Calling nextAll...");
+                                browser.runtime.sendMessage({ action: "nextAll" }, (nextResp) => {
+                                    if (nextResp && nextResp.success) {
+                                        showToast(`✅ [4] Tab #${nextResp.tabId} opened!`);
+                                    } else {
+                                        showToast(`❌ [4] nextAll failed: ${nextResp?.error || "no response"}`);
+                                    }
+                                });
                             }, 1500);
+                        } else {
+                            showToast(`❌ [2] Save failed: ${resp?.error || "no response"}`);
                         }
                     });
                 }
