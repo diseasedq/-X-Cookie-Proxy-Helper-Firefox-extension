@@ -148,7 +148,7 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             const ct0 = cookieMap.ct0 || "";
             if (!authToken) { sendResponse({ success: false }); return; }
 
-            return browser.storage.local.get(["savedAccounts", "selectedAccIdx", "saveCounter", "batchLines"]).then(data => {
+            return browser.storage.local.get(["savedAccounts", "selectedAccIdx", "saveCounter", "batchLines", "doneAccounts"]).then(data => {
                 const counter = (data.saveCounter || 0) + 1;
                 const acc = data.savedAccounts?.[data.selectedAccIdx];
                 const accInfo = acc ? `${acc.username} ${acc.password}` : "log pass";
@@ -157,22 +157,15 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 const batch = data.batchLines || [];
                 batch.push(line);
 
-                const date = new Date().toISOString().split("T")[0];
-                const blob = new Blob([batch.join("\n")], { type: "text/plain" });
-                const url = URL.createObjectURL(blob);
+                // Mark account as done
+                const done = data.doneAccounts || [];
+                if (data.selectedAccIdx >= 0 && !done.includes(data.selectedAccIdx)) {
+                    done.push(data.selectedAccIdx);
+                }
 
-                return browser.downloads.download({
-                    url, filename: `handshake/${date}.txt`, saveAs: false, conflictAction: "overwrite"
-                }).then(() => {
-                    // Mark account as done
-                    const done = data.doneAccounts || [];
-                    if (data.selectedAccIdx >= 0 && !done.includes(data.selectedAccIdx)) {
-                        done.push(data.selectedAccIdx);
-                    }
-                    browser.storage.local.set({ saveCounter: counter, batchLines: batch, doneAccounts: done });
-                    setTimeout(() => URL.revokeObjectURL(url), 5000);
-                    sendResponse({ success: true, count: counter });
-                });
+                // Save to storage only — no file download
+                browser.storage.local.set({ saveCounter: counter, batchLines: batch, doneAccounts: done });
+                sendResponse({ success: true, count: counter });
             });
         }).catch(err => sendResponse({ success: false, error: err.message }));
         return true;
